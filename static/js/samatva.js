@@ -5,7 +5,8 @@ const firebaseConfig = {
   projectId: "samatva-82793",
   storageBucket: "samatva-82793.firebasestorage.app",
   messagingSenderId: "728493385735",
-  appId: "1:728493385735:web:0e0cd4802e028bc1ee62a2"
+  appId: "1:728493385735:web:0e0cd4802e028bc1ee62a2",
+  measurementId: "G-GJCDXXN1FD"
 };
 
 // Initialize Firebase only once
@@ -14,6 +15,7 @@ if (!firebase.apps.length) {
 }
 const auth = firebase.auth();
 const db = firebase.firestore();
+const analytics = firebase.analytics();
 
 const FOOD_DB = {
   // --- PROTEIN SOURCES ---
