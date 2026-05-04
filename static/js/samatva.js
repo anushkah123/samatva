@@ -1,7 +1,19 @@
 // ═══════════════════════════ CONSTANTS ═══════════════════════════
-// TODO: Replace with your actual Render URL when deploying the backend!
-// Keep it as an empty string '' for local development using Flask
-const API_BASE_URL = 'https://samatva-1.onrender.com';
+const firebaseConfig = {
+  apiKey: "AIzaSyCkBwnAms15pCPxq1DtlkwsGxKdRQGw6ds",
+  authDomain: "samatva-82793.firebaseapp.com",
+  projectId: "samatva-82793",
+  storageBucket: "samatva-82793.firebasestorage.app",
+  messagingSenderId: "728493385735",
+  appId: "1:728493385735:web:0e0cd4802e028bc1ee62a2"
+};
+
+// Initialize Firebase only once
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 const FOOD_DB = {
   // --- PROTEIN SOURCES ---
@@ -109,26 +121,13 @@ let isAuthLoading = false;
 function syncKeyToBackend(fullKey, value) {
   if (isAuthLoading) return;
   const email = localStorage.getItem('sv_email');
-  if (!email || fullKey === 'sv_email' || fullKey === 'sv_is_auth') return;
+  if (!email || fullKey === 'sv_email' || fullKey === 'sv_is_auth' || fullKey === 'sv_just_authed' || fullKey === 'sv_last_day') return;
   
-  let key = '';
-  let date = today();
+  const dataToUpdate = {};
+  dataToUpdate[fullKey] = value;
   
-  if (fullKey === 'sv_profile') key = 'profile';
-  else if (fullKey === 'sv_history') key = 'history';
-  else if (fullKey.startsWith('sv_wo_')) { key = 'workout'; date = fullKey.replace('sv_wo_', ''); }
-  else if (fullKey.startsWith('sv_meals_')) { key = 'meals'; date = fullKey.replace('sv_meals_', ''); }
-  else if (fullKey.startsWith('sv_water_')) { key = 'water'; date = fullKey.replace('sv_water_', ''); }
-  else if (fullKey === 'sv_saved_foods') key = 'custom_foods';
-  else return;
-  
-  const timestamp = getTimestamp();
-  
-  fetch(`${API_BASE_URL}/api/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, key, value, date, timestamp })
-  }).catch(e => console.error("Save error", e));
+  db.collection("users").doc(email).set(dataToUpdate, { merge: true })
+    .catch(e => console.error("Firestore Save error", e));
 }
 
 const getProfile   = () => LS.get('sv_profile');
@@ -211,52 +210,26 @@ function handleAuth() {
   localStorage.setItem('sv_email', email);
   toast("Authenticating...");
   
-  fetch(`${API_BASE_URL}/api/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+  let authPromise;
+  if (authMode === 'signup') {
+    authPromise = auth.createUserWithEmailAndPassword(email, password);
+  } else {
+    authPromise = auth.signInWithEmailAndPassword(email, password);
+  }
+
+  authPromise.then((userCredential) => {
+    return db.collection("users").doc(email).get();
   })
-  .then(res => {
-    if (!res.ok) {
-      return res.json().then(err => { throw new Error(err.error || "Authentication failed"); });
-    }
-    return res.json();
-  })
-  .then(data => {
-    // 2. Populate LocalStorage with FRESH data
-    if (data.profile) localStorage.setItem('sv_profile', JSON.stringify(data.profile));
-    
-    // Process all daily logs
-    const history = data.history || {};
-    
-    if (data.workouts) {
-      Object.entries(data.workouts).forEach(([d, v]) => {
-        localStorage.setItem('sv_wo_' + d, JSON.stringify(v));
-        if (!history[d]) history[d] = {};
-        history[d].workout = v;
+  .then((docSnap) => {
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      Object.keys(data).forEach(k => {
+        if (k.startsWith('sv_')) {
+          localStorage.setItem(k, JSON.stringify(data[k]));
+        }
       });
     }
     
-    if (data.meals) {
-      Object.entries(data.meals).forEach(([d, v]) => {
-        localStorage.setItem('sv_meals_' + d, JSON.stringify(v));
-        if (!history[d]) history[d] = {};
-        history[d].meals = v;
-      });
-    }
-    
-    if (data.water) {
-      Object.entries(data.water).forEach(([d, v]) => {
-        localStorage.setItem('sv_water_' + d, JSON.stringify(v));
-        if (!history[d]) history[d] = {};
-        history[d].water = v;
-      });
-    }
-    
-    localStorage.setItem('sv_history', JSON.stringify(history));
-    if (data.custom_foods) localStorage.setItem('sv_saved_foods', JSON.stringify(data.custom_foods));
-    
-    // 3. Mark as authenticated and RELOAD
     localStorage.setItem('sv_is_auth', 'true');
     localStorage.setItem('sv_just_authed', 'true');
     isAuthLoading = false;
@@ -265,7 +238,11 @@ function handleAuth() {
   .catch(err => {
     console.error(err);
     isAuthLoading = false;
-    toast(err.message || "Authentication failed");
+    let msg = "Authentication failed";
+    if (err.code === 'auth/email-already-in-use') msg = "Email already exists. Please login.";
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') msg = "Incorrect password or user not found.";
+    if (err.code === 'auth/user-not-found') msg = "User not found. Please sign up.";
+    toast(msg);
   });
 }
 
