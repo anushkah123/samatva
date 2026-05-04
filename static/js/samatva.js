@@ -1,7 +1,7 @@
 // ═══════════════════════════ CONSTANTS ═══════════════════════════
 // TODO: Replace with your actual Render URL when deploying the backend!
 // Keep it as an empty string '' for local development using Flask
-const API_BASE_URL = '';
+const API_BASE_URL = 'https://samatva-1.onrender.com';
 
 const FOOD_DB = {
   // --- PROTEIN SOURCES ---
