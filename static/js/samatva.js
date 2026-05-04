@@ -1,4 +1,8 @@
 // ═══════════════════════════ CONSTANTS ═══════════════════════════
+// TODO: Replace with your actual Render URL when deploying the backend!
+// Keep it as an empty string '' for local development using Flask
+const API_BASE_URL = '';
+
 const FOOD_DB = {
   // --- PROTEIN SOURCES ---
   eggs:      { name:'Eggs', emoji:'🥚', unit:'eggs', p:6.5, c:0.5, f:5.5, cal:78, diet:['Egg','NonVeg'], isBasic:true },
@@ -120,7 +124,7 @@ function syncKeyToBackend(fullKey, value) {
   
   const timestamp = getTimestamp();
   
-  fetch('/api/save', {
+  fetch(`${API_BASE_URL}/api/save`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, key, value, date, timestamp })
@@ -207,7 +211,7 @@ function handleAuth() {
   localStorage.setItem('sv_email', email);
   toast("Authenticating...");
   
-  fetch('/api/auth', {
+  fetch(`${API_BASE_URL}/api/auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })

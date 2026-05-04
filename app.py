@@ -4,8 +4,10 @@ import json
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 DB_FILE = 'database/samatva.db'
 
