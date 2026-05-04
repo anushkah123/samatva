@@ -1,0 +1,3 @@
+[build]
+  command = "Move-Item -Path templates\\index.html -Destination .\\index.html -Force"
+  publish = "."
